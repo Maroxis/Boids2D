@@ -1,14 +1,68 @@
-﻿// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSMain
+﻿#pragma kernel CSMain
+#define GROUP_SIZE 256
+#include "UnityCG.cginc"
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-RWTexture2D<float4> Result;
+struct Boid
+{
+	float3 position;
+	float3 direction;
+};
 
-[numthreads(8,8,1)]
+RWStructuredBuffer<Boid> boidBuffer;
+
+CBUFFER_START(Params)
+float DeltaTime;
+float RotationSpeed;
+float BoidSpeed;
+float BoidMinSpeed;
+float NeighbourDistance;
+float AvoidDistance;
+int BoidsCount;
+CBUFFER_END
+
+[numthreads(GROUP_SIZE,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
+	Boid boid = boidBuffer[id.x];
 
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+	float3 pos = boid.position;
+	float3 rot = boid.direction;
+
+	float3 separation = float3(0.0, 0.0, 0.0);
+	float3 alignment = float3(0.0, 0.0, 0.0);
+	float3 cohesion = float3(0.0, 0.0, 0.0);
+
+	uint nearbyCount = 1; // Add self that is ignored in loop
+
+	for (int i = 0; i < BoidsCount; i++)
+	{
+		if (i != int(id.x))
+		{
+			Boid tempBoid = boidBuffer[i];
+			if (distance(boid.position, tempBoid.position) < NeighbourDistance)
+			{
+				//float3 diff = boid.position - tempBoid.position;
+				//// float diffLen = (diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+				//float diffLen = (length(diff));
+				//float scaler = clamp(1.0 - diffLen / NeighbourDistance, 0.0, 1.0);
+				//separation += diff * (scaler / diffLen);
+
+				alignment += tempBoid.direction;
+				cohesion += tempBoid.position;
+				nearbyCount++;
+			}
+			float avg = 1.0 / nearbyCount;
+			alignment *= avg;
+			cohesion *= avg;
+			cohesion = normalize(cohesion - boid.position);
+
+			float3 direction = alignment + cohesion;// + separation
+
+			float ip = exp(-RotationSpeed * DeltaTime);
+			boid.direction = lerp((direction), normalize(boid.direction), ip);
+
+			boid.position += (boid.direction) * (BoidSpeed * DeltaTime);
+		}
+	}
+    
 }
