@@ -24,7 +24,7 @@ CBUFFER_END
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
 	Boid boid = boidBuffer[id.x];
-
+	
 	float3 pos = boid.position;
 	float3 rot = boid.direction;
 
@@ -32,37 +32,53 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	float3 alignment = float3(0.0, 0.0, 0.0);
 	float3 cohesion = float3(0.0, 0.0, 0.0);
 
-	uint nearbyCount = 1; // Add self that is ignored in loop
-
+	uint nearbyCount = 0;
 	for (int i = 0; i < BoidsCount; i++)
 	{
-		if (i != int(id.x))
+		if (i != id.x)
 		{
 			Boid tempBoid = boidBuffer[i];
 			if (distance(boid.position, tempBoid.position) < NeighbourDistance)
 			{
-				//float3 diff = boid.position - tempBoid.position;
-				//// float diffLen = (diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-				//float diffLen = (length(diff));
-				//float scaler = clamp(1.0 - diffLen / NeighbourDistance, 0.0, 1.0);
-				//separation += diff * (scaler / diffLen);
-
 				alignment += tempBoid.direction;
 				cohesion += tempBoid.position;
 				nearbyCount++;
 			}
-			float avg = 1.0 / nearbyCount;
-			alignment *= avg;
-			cohesion *= avg;
-			cohesion = normalize(cohesion - boid.position);
-
-			float3 direction = alignment + cohesion;// + separation
-
-			float ip = exp(-RotationSpeed * DeltaTime);
-			boid.direction = lerp((direction), normalize(boid.direction), ip);
-
-			boid.position += (boid.direction) * (BoidSpeed * DeltaTime);
+			if (distance(boid.position, tempBoid.position) < AvoidDistance) {
+				float3 diff = boid.position - tempBoid.position;
+				float diffLen = length(diff);
+				float scaler = clamp(1.0 - diffLen / NeighbourDistance, 0.0, 1.0);
+				separation += diff * (scaler / diffLen);
+			}
 		}
 	}
-    
+	if (nearbyCount > 0) {
+		alignment /= nearbyCount;
+		cohesion /= nearbyCount;
+		//cohesion = normalize(cohesion);
+		//alignment = normalize(alignment);
+		cohesion = (cohesion - boid.position) / 100;
+		alignment = (alignment - boid.direction) / 8;
+	}
+
+	boid.direction += separation + alignment + cohesion;
+
+	float mag = length(boid.direction);
+	if (mag > 1.0)
+		boid.direction = normalize(boid.direction);
+
+	else if (mag == 0.0)
+	{
+		boid.direction[0] = BoidMinSpeed / 0.141 + 0.001;
+		boid.direction[1] = BoidMinSpeed / 0.141 + 0.001;
+		boid.direction[2] = 0.0;
+	}
+	else if (mag < BoidMinSpeed) {
+		boid.direction = (boid.direction / mag) * BoidMinSpeed;
+	}
+
+	float ip = exp(-RotationSpeed * DeltaTime);
+	boidBuffer[id.x].direction = lerp((boidBuffer[id.x].direction), boid.direction, ip);
+	//boidBuffer[id.x].direction = boid.direction;
+	boidBuffer[id.x].position += (boidBuffer[id.x].direction) * (BoidSpeed * DeltaTime);
 }

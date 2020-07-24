@@ -27,13 +27,18 @@ public class GPU_FlockCompute : MonoBehaviour
         this.boidsGo = new GameObject[this.BoidsCount];
         this.boidsData = new GPUBoid_Compute[this.BoidsCount];
         this.kernelHandle = cshader.FindKernel("CSMain");
-
+        GameObject boidGroup = GameObject.Find("Boids");
+        
         for (int i = 0; i < this.BoidsCount; i++)
         {
             this.boidsData[i].position = transform.position + Random.insideUnitSphere * SpawnRadius;
             this.boidsData[i].position[2] = 0;
+            this.boidsData[i].direction = this.boidsData[i].position / SpawnRadius;
             this.boidsGo[i] = Instantiate(boidPrefab, this.boidsData[i].position, Quaternion.Euler(this.boidsData[i].direction)) as GameObject;
+            this.boidsGo[i].transform.parent = boidGroup.transform;
             this.boidsData[i].direction = this.boidsGo[i].transform.forward;
+            this.boidsData[i].direction[2] = 0;
+
         }
     }
 
@@ -41,11 +46,12 @@ public class GPU_FlockCompute : MonoBehaviour
     public float BoidSpeed = 20f;
     public float BoidMinSpeed = 0.2f;
     public float NeighbourDistance = 10f;
-    public float AvoidDistance = 2f;
+    public float AvoidDistance = 4f;
 
 
     void Update()
     {
+        
         ComputeBuffer buffer = new ComputeBuffer(BoidsCount, 24);
         buffer.SetData(this.boidsData);
 
@@ -59,11 +65,9 @@ public class GPU_FlockCompute : MonoBehaviour
         cshader.SetInt("BoidsCount", BoidsCount);
 
         cshader.Dispatch(this.kernelHandle, this.BoidsCount, 1, 1);
-
         buffer.GetData(this.boidsData);
-
         buffer.Release();
-
+        
         for (int i = 0; i < this.boidsData.Length; i++)
         {
             this.boidsGo[i].transform.localPosition = this.boidsData[i].position;
