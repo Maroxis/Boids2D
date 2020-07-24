@@ -62,11 +62,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1559126121930127021, guid: 7b1695cfe54d35542817d964b632d2c2,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1829104813394219391, guid: 7b1695cfe54d35542817d964b632d2c2,
         type: 3}
       propertyPath: m_Name
-      value: Boid
+      value: Boid GPU
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 1559126121930127020, guid: 7b1695cfe54d35542817d964b632d2c2, type: 3}
+    - {fileID: 1559126121930127021, guid: 7b1695cfe54d35542817d964b632d2c2, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 7b1695cfe54d35542817d964b632d2c2, type: 3}

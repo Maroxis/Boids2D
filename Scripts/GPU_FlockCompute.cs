@@ -14,7 +14,8 @@ public class GPU_FlockCompute : MonoBehaviour
     public GPUBoid_Compute[] boidsData;
 
     private int kernelHandle;
-
+    private float BorderX;
+    private float BorderY;
 
     public struct GPUBoid_Compute
     {
@@ -24,6 +25,8 @@ public class GPU_FlockCompute : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        BorderY = Camera.main.orthographicSize;
+        BorderX = Camera.main.aspect * BorderY;
         this.boidsGo = new GameObject[this.BoidsCount];
         this.boidsData = new GPUBoid_Compute[this.BoidsCount];
         this.kernelHandle = cshader.FindKernel("CSMain");
@@ -48,7 +51,6 @@ public class GPU_FlockCompute : MonoBehaviour
     public float NeighbourDistance = 10f;
     public float AvoidDistance = 4f;
 
-
     void Update()
     {
         
@@ -62,6 +64,8 @@ public class GPU_FlockCompute : MonoBehaviour
         cshader.SetFloat("BoidMinSpeed", BoidMinSpeed);
         cshader.SetFloat("NeighbourDistance", NeighbourDistance);
         cshader.SetFloat("AvoidDistance", AvoidDistance);
+        cshader.SetFloats("BorderX", BorderX);
+        cshader.SetFloats("BorderY", BorderY);
         cshader.SetInt("BoidsCount", BoidsCount);
 
         cshader.Dispatch(this.kernelHandle, this.BoidsCount, 1, 1);

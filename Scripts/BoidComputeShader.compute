@@ -17,6 +17,8 @@ float BoidSpeed;
 float BoidMinSpeed;
 float NeighbourDistance;
 float AvoidDistance;
+float BorderX;
+float BorderY;
 int BoidsCount;
 CBUFFER_END
 
@@ -57,11 +59,30 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 		cohesion /= nearbyCount;
 		//cohesion = normalize(cohesion);
 		//alignment = normalize(alignment);
-		cohesion = (cohesion - boid.position) / 100;
+		cohesion = (cohesion - boid.position) / 500;
 		alignment = (alignment - boid.direction) / 8;
 	}
+	
+	//Border 
+	float3 border = float3(0.0, 0.0, 0.0);
+	float borderForce = 0.02;
+	float slack;
+	if (borderForce != 0)
+		slack = 1 / borderForce;
 
-	boid.direction += separation + alignment + cohesion;
+	if (boid.position[0] < BorderX * (-1) + slack)
+		border[0] = borderForce;
+	else if (boid.position[0] > BorderX - slack)
+		border[0] = borderForce * (-1);
+
+	if (boid.position[1] < BorderY * (-1) + slack)
+		border[1] = borderForce;
+	else if (boid.position[1] > BorderY - slack)
+		border[1] = borderForce * (-1);
+
+	//Endof Border
+
+	boid.direction += separation + alignment + cohesion + border;
 
 	float mag = length(boid.direction);
 	if (mag > 1.0)
@@ -79,6 +100,5 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 	float ip = exp(-RotationSpeed * DeltaTime);
 	boidBuffer[id.x].direction = lerp((boidBuffer[id.x].direction), boid.direction, ip);
-	//boidBuffer[id.x].direction = boid.direction;
 	boidBuffer[id.x].position += (boidBuffer[id.x].direction) * (BoidSpeed * DeltaTime);
 }
