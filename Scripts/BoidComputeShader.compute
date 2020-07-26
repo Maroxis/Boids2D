@@ -1,5 +1,5 @@
 ﻿#pragma kernel CSMain
-#define GROUP_SIZE 256
+#define GROUP_SIZE 32
 #include "UnityCG.cginc"
 
 struct Boid
@@ -37,22 +37,23 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	uint nearbyCount = 0;
 	for (int i = 0; i < BoidsCount; i++)
 	{
-		if (i != id.x)
+		if (i == id.x)
+			continue;
+
+		Boid tempBoid = boidBuffer[i];
+		if (distance(boid.position, tempBoid.position) < NeighbourDistance)
 		{
-			Boid tempBoid = boidBuffer[i];
-			if (distance(boid.position, tempBoid.position) < NeighbourDistance)
-			{
-				alignment += tempBoid.direction;
-				cohesion += tempBoid.position;
-				nearbyCount++;
-			}
-			if (distance(boid.position, tempBoid.position) < AvoidDistance) {
-				float3 diff = boid.position - tempBoid.position;
-				float diffLen = length(diff);
-				float scaler = clamp(1.0 - diffLen / NeighbourDistance, 0.0, 1.0);
-				separation += diff * (scaler / diffLen);
-			}
+			alignment += tempBoid.direction;
+			cohesion += tempBoid.position;
+			nearbyCount++;
 		}
+		if (distance(boid.position, tempBoid.position) < AvoidDistance) {
+			float3 diff = boid.position - tempBoid.position;
+			float diffLen = length(diff);
+			float scaler = clamp(1.0 - diffLen / NeighbourDistance, 0.0, 1.0);
+			separation += diff * (scaler / diffLen);
+		}
+		
 	}
 	if (nearbyCount > 0) {
 		alignment /= nearbyCount;
