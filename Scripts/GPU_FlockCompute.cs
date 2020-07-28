@@ -22,6 +22,7 @@ public class GPU_FlockCompute : MonoBehaviour
     public struct GPUBoid_Compute
     {
         public Vector3 position, direction;
+        public float angle;
     }
 
     void Start()
@@ -40,9 +41,8 @@ public class GPU_FlockCompute : MonoBehaviour
             this.boidsData[i].position = transform.position + Random.insideUnitSphere * SpawnRadius;
             this.boidsData[i].position[2] = 0;
             this.boidsData[i].direction = this.boidsData[i].position / SpawnRadius;
-            this.boidsGo[i] = Instantiate(boidPrefab, this.boidsData[i].position, Quaternion.Euler(this.boidsData[i].direction)) as GameObject;
+            this.boidsGo[i] = Instantiate(boidPrefab, this.boidsData[i].position, Quaternion.identity) as GameObject;
             this.boidsGo[i].transform.parent = boidGroup.transform;
-            this.boidsGo[i].transform.localScale = new Vector3(50,200,50);
             this.boidsData[i].direction = this.boidsGo[i].transform.forward;
             this.boidsData[i].direction[2] = 0;
 
@@ -57,7 +57,7 @@ public class GPU_FlockCompute : MonoBehaviour
 
     void FixedUpdate()
     {
-        buffer = new ComputeBuffer(BoidsCount, 24);
+        buffer = new ComputeBuffer(BoidsCount, 28);
         buffer.SetData(this.boidsData);
 
         cshader.SetBuffer(this.kernelHandle, "boidBuffer", buffer);
@@ -81,7 +81,7 @@ public class GPU_FlockCompute : MonoBehaviour
 
             if (!this.boidsData[i].direction.Equals(Vector3.zero))
             {
-                this.boidsGo[i].transform.rotation = Quaternion.LookRotation(this.boidsData[i].direction);
+                 this.boidsGo[i].transform.localRotation = Quaternion.Euler(0, 0, this.boidsData[i].angle + 180f);
             }
 
         }

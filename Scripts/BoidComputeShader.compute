@@ -6,6 +6,7 @@ struct Boid
 {
 	float3 position;
 	float3 direction;
+	float angle;
 };
 
 RWStructuredBuffer<Boid> boidBuffer;
@@ -51,7 +52,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			float3 diff = boid.position - tempBoid.position;
 			float diffLen = length(diff);
 			float scaler = clamp(1.0 - diffLen / NeighbourDistance, 0.0, 1.0);
-			separation += diff * (scaler / diffLen);
+			separation += (diff * (scaler / diffLen))/3;
 		}
 		
 	}
@@ -102,4 +103,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	float ip = exp(-RotationSpeed * DeltaTime);
 	boidBuffer[id.x].direction = lerp((boidBuffer[id.x].direction), boid.direction, ip);
 	boidBuffer[id.x].position += (boidBuffer[id.x].direction) * (BoidSpeed * DeltaTime);
+	float pi2 = 6.283185307179586476924;
+	float rad = atan2(boidBuffer[id.x].direction.y, boidBuffer[id.x].direction.x);
+	boidBuffer[id.x].angle = rad * (360/pi2);
 }
