@@ -154,13 +154,13 @@ MonoBehaviour:
   boidPrefab: {fileID: 1457204344798749919, guid: baef11785e3564b47a61d34a50cfc2e2,
     type: 3}
   BoidsCount: 100
-  SpawnRadius: 100
+  SpawnRadius: 20
   boidsGo: []
   RotationSpeed: 1
   BoidSpeed: 50
   BoidMinSpeed: 0.4
   NeighbourDistance: 10
-  AvoidDistance: 3
+  AvoidDistance: 4
 --- !u!4 &472310317
 Transform:
   m_ObjectHideFlags: 0

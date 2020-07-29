@@ -45,7 +45,7 @@ public class GPU_FlockCompute : MonoBehaviour
             this.boidsGo[i].transform.parent = boidGroup.transform;
             this.boidsData[i].direction = this.boidsGo[i].transform.forward;
             this.boidsData[i].direction[2] = 0;
-
+            this.boidsGo[i].GetComponent<Renderer>().material.SetFloat("_Noise", Mathf.Abs(Mathf.Sin(this.boidsData[i].position.x * this.boidsData[i].position.y)) * 10);
         }
     }
 
@@ -85,6 +85,7 @@ public class GPU_FlockCompute : MonoBehaviour
             }
 
         }
+        
     }
     void OnDestroy()
     {
