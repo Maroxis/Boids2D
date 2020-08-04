@@ -2,64 +2,95 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public struct GPUBoid_Compute
+{
+    public Vector3 position, direction;
+}
+
 public class GPU_FlockCompute : MonoBehaviour
 {
 
-    public ComputeShader cshader;
+    public int boidsAmmount = 100;
+    private int subMeshIndex = 0;
 
-    public GameObject boidPrefab;
-    public int BoidsCount;
+    private int cachedInstanceCount = -1;
+    private int cachedSubMeshIndex = -1;
+    private ComputeBuffer buffer;
+    private ComputeBuffer argsBuffer;
+    private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
+
+    public Mesh boidMesh;
+    public Material boidMaterial;
+
     public float SpawnRadius;
-    public GameObject[] boidsGo;
+
     public GPUBoid_Compute[] boidsData;
 
-    private int kernelHandle;
-    private ComputeBuffer buffer;
-
-    private float BorderX;
-    private float BorderY;
     
-    public struct GPUBoid_Compute
-    {
-        public Vector3 position, direction;
-        public float angle;
-    }
-
-    void Start()
-    {
-        this.kernelHandle = cshader.FindKernel("CSMain");
-
-        BorderY = Camera.main.orthographicSize;
-        BorderX = Camera.main.aspect * BorderY;
-
-        this.boidsGo = new GameObject[this.BoidsCount];
-        this.boidsData = new GPUBoid_Compute[this.BoidsCount];
-        GameObject boidGroup = GameObject.Find("Boids");
-        
-        for (int i = 0; i < this.BoidsCount; i++)
-        {
-            this.boidsData[i].position = transform.position + Random.insideUnitSphere * SpawnRadius;
-            this.boidsData[i].position[2] = 0;
-            this.boidsData[i].direction = this.boidsData[i].position / SpawnRadius;
-            this.boidsGo[i] = Instantiate(boidPrefab, this.boidsData[i].position, Quaternion.identity) as GameObject;
-            this.boidsGo[i].transform.parent = boidGroup.transform;
-            this.boidsData[i].direction = this.boidsGo[i].transform.forward;
-            this.boidsData[i].direction[2] = 0;
-            this.boidsGo[i].GetComponent<Renderer>().material.SetFloat("_Noise", Mathf.Abs(Mathf.Sin(this.boidsData[i].position.x * this.boidsData[i].position.y)) * 10);
-        }
-    }
-
+     public ComputeShader cshader;
+     private int kernelHandle;
+    
+    
     public float RotationSpeed = 1f;
     public float BoidSpeed = 20f;
     public float BoidMinSpeed = 0.2f;
     public float NeighbourDistance = 10f;
     public float AvoidDistance = 4f;
 
-    void FixedUpdate()
-    {
-        buffer = new ComputeBuffer(BoidsCount, 28);
-        buffer.SetData(this.boidsData);
+    private float BorderX;
+    private float BorderY;
 
+    void Start()
+    {
+        argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
+        this.boidsData = new GPUBoid_Compute[this.boidsAmmount];
+        
+        this.kernelHandle = cshader.FindKernel("CSMain");
+
+        BorderY = Camera.main.orthographicSize;
+        BorderX = Camera.main.aspect * BorderY;
+
+        UpdateBuffers();
+    }
+
+    void UpdateBuffers()
+    {
+        // Ensure submesh index is in range
+        if (boidMesh != null)
+            subMeshIndex = Mathf.Clamp(subMeshIndex, 0, boidMesh.subMeshCount - 1);
+
+        // Positions
+        if (buffer != null)
+            buffer.Release();
+        buffer = new ComputeBuffer(boidsAmmount, 24);
+        
+        for (int i = 0; i < boidsAmmount; i++)
+        {
+            this.boidsData[i].position = transform.position + Random.insideUnitSphere * SpawnRadius;
+            this.boidsData[i].position[2] = 0;
+            this.boidsData[i].direction = this.boidsData[i].position / SpawnRadius;
+            this.boidsData[i].direction[2] = 0;
+
+            //this.boidsGo[i].GetComponent<Renderer>().material.SetFloat("_Noise", Mathf.Abs(Mathf.Sin(this.boidsData[i].position.x * this.boidsData[i].position.y)) * 10);
+        }
+        buffer.SetData(boidsData);
+        boidMaterial.SetBuffer("boidBuffer", buffer);
+        if (boidMesh != null)
+        {
+            args[0] = (uint)boidMesh.GetIndexCount(subMeshIndex);
+            args[1] = (uint)boidsAmmount;
+            args[2] = (uint)boidMesh.GetIndexStart(subMeshIndex);
+            args[3] = (uint)boidMesh.GetBaseVertex(subMeshIndex);
+        }
+        else
+        {
+            args[0] = args[1] = args[2] = args[3] = 0;
+        }
+        argsBuffer.SetData(args);
+
+        cachedInstanceCount = boidsAmmount;
+        cachedSubMeshIndex = subMeshIndex;
+        
         cshader.SetBuffer(this.kernelHandle, "boidBuffer", buffer);
         cshader.SetFloat("DeltaTime", Time.deltaTime);
         cshader.SetFloat("RotationSpeed", RotationSpeed);
@@ -69,27 +100,28 @@ public class GPU_FlockCompute : MonoBehaviour
         cshader.SetFloat("AvoidDistance", AvoidDistance);
         cshader.SetFloats("BorderX", BorderX);
         cshader.SetFloats("BorderY", BorderY);
-        cshader.SetInt("BoidsCount", BoidsCount);
-
-        cshader.Dispatch(this.kernelHandle, this.BoidsCount, 1, 1);
-        buffer.GetData(this.boidsData);
-        buffer.Release();
+        cshader.SetInt("BoidsCount", boidsAmmount);
         
-        for (int i = 0; i < this.boidsData.Length; i++)
-        {
-            this.boidsGo[i].transform.localPosition = this.boidsData[i].position;
+    }
 
-            if (!this.boidsData[i].direction.Equals(Vector3.zero))
-            {
-                 this.boidsGo[i].transform.localRotation = Quaternion.Euler(0, 0, this.boidsData[i].angle + 180f);
-            }
+    private void Update()
+    {
 
-        }
-        
+        cshader.Dispatch(this.kernelHandle, boidsAmmount / 32 + 1, 1, 1);
+
+        if (cachedInstanceCount != boidsAmmount || cachedSubMeshIndex != subMeshIndex)
+            UpdateBuffers();
+        Graphics.DrawMeshInstancedIndirect(boidMesh, 0, boidMaterial, new Bounds(Vector3.zero, new Vector3(1000.0f, 1000.0f, 1000.0f)), argsBuffer);
     }
     void OnDestroy()
     {
-        if (buffer != null) buffer.Release();
+        if (buffer != null)
+            buffer.Release();
+        buffer = null;
+
+        if (argsBuffer != null)
+            argsBuffer.Release();
+        argsBuffer = null;
     }
 }
 

@@ -6,7 +6,6 @@ struct Boid
 {
 	float3 position;
 	float3 direction;
-	float angle;
 };
 
 RWStructuredBuffer<Boid> boidBuffer;
@@ -20,7 +19,7 @@ float NeighbourDistance;
 float AvoidDistance;
 float BorderX;
 float BorderY;
-int BoidsCount;
+unsigned int BoidsCount;
 CBUFFER_END
 
 [numthreads(GROUP_SIZE,1,1)]
@@ -36,7 +35,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	float3 cohesion = float3(0.0, 0.0, 0.0);
 
 	uint nearbyCount = 0;
-	for (int i = 0; i < BoidsCount; i++)
+	for (unsigned int i = 0; i < BoidsCount; i++)
 	{
 		if (i == id.x)
 			continue;
@@ -105,7 +104,4 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	float ip = exp(-RotationSpeed * DeltaTime);
 	boidBuffer[id.x].direction = lerp((boidBuffer[id.x].direction), boid.direction, ip);
 	boidBuffer[id.x].position += (boidBuffer[id.x].direction) * (BoidSpeed * DeltaTime);
-	float pi2 = 6.283185307179586476924;
-	float rad = atan2(boidBuffer[id.x].direction.y, boidBuffer[id.x].direction.x);
-	boidBuffer[id.x].angle = rad * (360/pi2);
 }
