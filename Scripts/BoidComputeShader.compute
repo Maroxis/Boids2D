@@ -1,4 +1,5 @@
 ﻿#pragma kernel CSMain
+#pragma kernel CSStart
 #define GROUP_SIZE 32
 #include "UnityCG.cginc"
 
@@ -7,8 +8,15 @@ struct Boid
 	float3 position;
 	float3 direction;
 };
-
+/*
+struct Test
+{
+	int x;
+};
+RWStructuredBuffer<Test> testBuffer;
+*/
 RWStructuredBuffer<Boid> boidBuffer;
+
 
 CBUFFER_START(Params)
 float DeltaTime;
@@ -19,6 +27,8 @@ float NeighbourDistance;
 float AvoidDistance;
 float BorderX;
 float BorderY;
+//float CellSizeX;
+//float CellSizeY;
 unsigned int BoidsCount;
 CBUFFER_END
 
@@ -41,6 +51,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			continue;
 
 		Boid tempBoid = boidBuffer[i];
+
 		if (distance(boid.position, tempBoid.position) < NeighbourDistance)
 		{
 			alignment += tempBoid.direction;
@@ -67,11 +78,11 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	//Border 
 	float3 border = float3(0.0, 0.0, 0.0);
 	float borderForce = 0.02;
-	float slack;
-	if (borderForce != 0)
-		slack = 1 / borderForce;
-	if (slack > BorderY)
-		slack = BorderY / 5;
+	int slack = 20;
+	//if (borderForce != 0)
+	//	slack = 1 / borderForce;
+	//if (slack > BorderY)
+	//	slack = BorderY / 5;
 
 	if (boid.position[0] < BorderX * (-1) + slack)
 		border[0] = borderForce;
@@ -85,7 +96,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 	//Endof Border
 
-	boid.direction += separation + alignment + cohesion + border;
+	boid.direction += (separation + alignment + cohesion + border);// * testBuffer[id.x].x;
 
 	float mag = length(boid.direction);
 	if (mag > 1.0)
@@ -102,6 +113,13 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	}
 
 	float ip = exp(-RotationSpeed * DeltaTime);
-	boidBuffer[id.x].direction = lerp((boidBuffer[id.x].direction), boid.direction, ip);
-	boidBuffer[id.x].position += (boidBuffer[id.x].direction) * (BoidSpeed * DeltaTime);
+	boid.direction = lerp((boid.direction), boid.direction, ip);
+	boid.position += (boid.direction) * (BoidSpeed * DeltaTime);
+
+	boidBuffer[id.x] = boid;
+}
+[numthreads(GROUP_SIZE, 1, 1)]
+void CSStart(uint3 id : SV_DispatchThreadID)
+{
+	//testBuffer[id.x].x = 1;
 }
