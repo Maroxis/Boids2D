@@ -39,6 +39,8 @@ public class CameraController : MonoBehaviour
         if (Input.GetAxis("Mouse ScrollWheel") > 0f) // forward
         {
             cam.orthographicSize -= scrollSpeed;
+            if (cam.orthographicSize < 20)
+                cam.orthographicSize = 20;
         }
         else if (Input.GetAxis("Mouse ScrollWheel") < 0f) // backwards
         {
